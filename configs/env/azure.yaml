@@ -1,0 +1,8 @@
+resources:
+  max_ram_gb: 110
+  max_disk_gb: 680
+  num_workers: 8
+  device: gpu
+
+runtime:
+  wandb_mode: online

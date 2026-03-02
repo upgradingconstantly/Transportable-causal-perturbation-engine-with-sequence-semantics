@@ -1,0 +1,5 @@
+resources:
+  max_ram_gb: 12
+  max_disk_gb: 250
+  num_workers: 2
+  device: cpu

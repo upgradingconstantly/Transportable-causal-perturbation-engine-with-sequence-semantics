@@ -1,0 +1,26 @@
+paths:
+  artifact_root: artifacts
+  data_root: data
+  cache_root: .cache/tcpe
+
+resources:
+  max_ram_gb: 16
+  max_disk_gb: 300
+  num_workers: 2
+  device: auto
+
+dataset:
+  primary_id: synthetic
+  secondary_ids: []
+
+model:
+  transport_variant: ot
+  latent_dim: 128
+  sequence_embedding_dim: 256
+  cell_embedding_dim: 256
+
+runtime:
+  seed: 42
+  deterministic_torch: true
+  wandb_project: tcpe
+  wandb_mode: offline
