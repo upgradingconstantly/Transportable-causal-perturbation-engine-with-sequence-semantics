@@ -1,8 +1,8 @@
 # Transportable Causal Perturbation Engine (TCPE)
 
-Phase 1-16 bootstrap for the TCPE project.
+Phase 1-17 bootstrap for the TCPE project.
 
-## Phase 1-16 Contents
+## Phase 1-17 Contents
 - Python package scaffold with six module stubs:
   - ingestion
   - sequence embedding
@@ -21,6 +21,7 @@ Phase 1-16 bootstrap for the TCPE project.
   - eval
   - card
   - pipeline
+  - cloud
 - Hierarchical config overlays:
   - `configs/base.yaml`
   - `configs/env/local.yaml`
@@ -130,6 +131,12 @@ Phase 1-16 bootstrap for the TCPE project.
   - local eligibility report output:
     - `local_validation_report.json`
     - `local_validation_report.md`
+- Cloud handoff preparation (Phase 17):
+  - Oracle VM + Kaggle split presets aligned to the confirmed infra contract
+  - resume-ready checkpoint seeding from externally preprocessed HVG-selected `.h5ad`
+  - GitHub/Hugging Face/Zenodo artifact transfer command planning
+  - budget log + interruption recovery simulation
+  - tmux-oriented cloud runbook generation
 
 ## Runtime
 - Python `3.11`
@@ -162,6 +169,7 @@ bash scripts/check.sh
 python -m tcpe --help
 python -m tcpe data --help
 python -m tcpe train --env local --dry-run
+python -m tcpe cloud --env local --dry-run
 ```
 
 Example output includes validated config environment, deterministic run id, and resolved artifact layout.

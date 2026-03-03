@@ -25,7 +25,16 @@ from tcpe.runtime import (
     write_run_manifest,
 )
 
-COMMAND_GROUPS: tuple[str, ...] = ("data", "embed", "train", "causal", "eval", "card", "pipeline")
+COMMAND_GROUPS: tuple[str, ...] = (
+    "data",
+    "embed",
+    "train",
+    "causal",
+    "eval",
+    "card",
+    "pipeline",
+    "cloud",
+)
 PIPELINE_STEP_CHOICES: tuple[str, ...] = (
     "ingest",
     "preprocess",
@@ -141,6 +150,33 @@ def build_parser() -> argparse.ArgumentParser:
                 default=0,
                 help="Causal bootstrap iterations for pipeline runs.",
             )
+        if name == "cloud":
+            group_parser.add_argument(
+                "--preprocessed-h5ad",
+                type=Path,
+                default=None,
+                help=(
+                    "Optional externally preprocessed HVG-selected h5ad to seed a resume-ready "
+                    "checkpoint bundle."
+                ),
+            )
+            group_parser.add_argument(
+                "--dataset-label",
+                default="external_hvg_h5ad",
+                help="Dataset label to record in the seeded checkpoint bundle.",
+            )
+            group_parser.add_argument(
+                "--budget-spent-usd",
+                type=float,
+                default=0.0,
+                help="Current spend to record in the Phase 17 budget log.",
+            )
+            group_parser.add_argument(
+                "--simulate-interruption-after",
+                choices=PIPELINE_STEP_CHOICES,
+                default="train",
+                help="Pipeline step used for the spot interruption recovery simulation.",
+            )
         group_parser.set_defaults(handler=_run_group_scaffold)
 
     return parser
@@ -180,6 +216,7 @@ def _run_group_scaffold(args: argparse.Namespace) -> int:
     layout = build_artifact_layout(config=config, command_group=command_group, run_id=run_id)
     transport_dispatch: dict[str, Any] | None = None
     pipeline_result: dict[str, Any] | None = None
+    cloud_handoff_result: dict[str, Any] | None = None
     if command_group == "train":
         from tcpe.transport import describe_transport_variant
 
@@ -187,7 +224,34 @@ def _run_group_scaffold(args: argparse.Namespace) -> int:
         transport_dispatch = info.to_dict()
 
     manifest_path = None
-    if not dry_run:
+    if command_group == "cloud":
+        from tcpe.cloud_handoff import CloudHandoffModule
+
+        if not dry_run:
+            ensure_artifact_layout(layout)
+            manifest_path = write_run_manifest(
+                layout=layout,
+                config=config,
+                command_group=command_group,
+                run_id=run_id,
+                config_path=config_path,
+            )
+        cloud_module = CloudHandoffModule()
+        cloud_result = cloud_module.run(
+            config=config,
+            layout=layout,
+            run_id=run_id,
+            preprocessed_h5ad_path=cast(Path | None, getattr(args, "preprocessed_h5ad", None)),
+            dataset_label=str(getattr(args, "dataset_label", "external_hvg_h5ad")),
+            budget_spent_usd=float(getattr(args, "budget_spent_usd", 0.0)),
+            simulate_interruption_after=cast(
+                Any,
+                getattr(args, "simulate_interruption_after", "train"),
+            ),
+            dry_run=dry_run,
+        )
+        cloud_handoff_result = cloud_result.to_dict()
+    elif not dry_run:
         ensure_artifact_layout(layout)
         manifest_path = write_run_manifest(
             layout=layout,
@@ -201,9 +265,7 @@ def _run_group_scaffold(args: argparse.Namespace) -> int:
 
             dataset_override = cast(str | None, getattr(args, "dataset_id", None))
             dataset_id = (
-                dataset_override
-                if dataset_override is not None
-                else str(config.dataset.primary_id)
+                dataset_override if dataset_override is not None else str(config.dataset.primary_id)
             )
             latent_override = cast(int | None, getattr(args, "transport_latent_dim", None))
             hidden_override = cast(int | None, getattr(args, "transport_hidden_dim", None))
@@ -254,11 +316,16 @@ def _run_group_scaffold(args: argparse.Namespace) -> int:
         },
         "transport_dispatch": transport_dispatch,
         "pipeline_result": pipeline_result,
+        "cloud_handoff_result": cloud_handoff_result,
         "manifest_path": str(manifest_path) if manifest_path is not None else None,
         "message": (
-            f"Phase 15 pipeline executed for '{command_group}'."
-            if command_group == "pipeline" and not dry_run
-            else f"Phase 2 scaffold executed for '{command_group}'."
+            "Phase 17 cloud handoff plan generated."
+            if command_group == "cloud"
+            else (
+                f"Phase 15 pipeline executed for '{command_group}'."
+                if command_group == "pipeline" and not dry_run
+                else f"Phase 2 scaffold executed for '{command_group}'."
+            )
         ),
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
