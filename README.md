@@ -1,8 +1,8 @@
 # Transportable Causal Perturbation Engine (TCPE)
 
-Phase 1-17 bootstrap for the TCPE project.
+Phase 1-18 bootstrap for the TCPE project.
 
-## Phase 1-17 Contents
+## Phase 1-18 Contents
 - Python package scaffold with six module stubs:
   - ingestion
   - sequence embedding
@@ -22,6 +22,7 @@ Phase 1-17 bootstrap for the TCPE project.
   - card
   - pipeline
   - cloud
+  - cloud-exec
 - Hierarchical config overlays:
   - `configs/base.yaml`
   - `configs/env/local.yaml`
@@ -137,6 +138,12 @@ Phase 1-17 bootstrap for the TCPE project.
   - GitHub/Hugging Face/Zenodo artifact transfer command planning
   - budget log + interruption recovery simulation
   - tmux-oriented cloud runbook generation
+- Cloud execution sequence (Phase 18):
+  - exact eight-step Oracle/Kaggle launcher generation in project-plan order
+  - OCI Python SDK object-storage transfer helper for bucket I/O
+  - tmux launcher script for Oracle jobs and execution runbook output
+  - runtime timeout guards, shutdown instructions, and initialized sequence checkpoint
+  - Kaggle cloud mode defaults updated to `WANDB_MODE=online`
 
 ## Runtime
 - Python `3.11`
@@ -170,6 +177,7 @@ python -m tcpe --help
 python -m tcpe data --help
 python -m tcpe train --env local --dry-run
 python -m tcpe cloud --env local --dry-run
+python -m tcpe cloud-exec --env local --dry-run
 ```
 
 Example output includes validated config environment, deterministic run id, and resolved artifact layout.

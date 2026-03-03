@@ -21,6 +21,7 @@ def test_package_imports() -> None:
         "tcpe.causal",
         "tcpe.context_shift",
         "tcpe.cloud_handoff",
+        "tcpe.cloud_execution",
         "tcpe.pipeline",
         "tcpe.local_validation",
         "tcpe.evaluation",

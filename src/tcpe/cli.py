@@ -34,6 +34,7 @@ COMMAND_GROUPS: tuple[str, ...] = (
     "card",
     "pipeline",
     "cloud",
+    "cloud-exec",
 )
 PIPELINE_STEP_CHOICES: tuple[str, ...] = (
     "ingest",
@@ -177,6 +178,18 @@ def build_parser() -> argparse.ArgumentParser:
                 default="train",
                 help="Pipeline step used for the spot interruption recovery simulation.",
             )
+        if name == "cloud-exec":
+            group_parser.add_argument(
+                "--context-shift-executor",
+                choices=("oracle_vm", "kaggle"),
+                default="oracle_vm",
+                help="Where to run step 7 (context-shift + model card).",
+            )
+            group_parser.add_argument(
+                "--include-optional-bridge",
+                action="store_true",
+                help="Materialize the optional step-8 launcher as enabled.",
+            )
         group_parser.set_defaults(handler=_run_group_scaffold)
 
     return parser
@@ -217,6 +230,7 @@ def _run_group_scaffold(args: argparse.Namespace) -> int:
     transport_dispatch: dict[str, Any] | None = None
     pipeline_result: dict[str, Any] | None = None
     cloud_handoff_result: dict[str, Any] | None = None
+    cloud_execution_result: dict[str, Any] | None = None
     if command_group == "train":
         from tcpe.transport import describe_transport_variant
 
@@ -251,6 +265,35 @@ def _run_group_scaffold(args: argparse.Namespace) -> int:
             dry_run=dry_run,
         )
         cloud_handoff_result = cloud_result.to_dict()
+    elif command_group == "cloud-exec":
+        from tcpe.cloud_execution import Phase18ExecutionConfig, Phase18ExecutionModule
+
+        if not dry_run:
+            ensure_artifact_layout(layout)
+            manifest_path = write_run_manifest(
+                layout=layout,
+                config=config,
+                command_group=command_group,
+                run_id=run_id,
+                config_path=config_path,
+            )
+        exec_module = Phase18ExecutionModule()
+        exec_result = exec_module.run(
+            config=config,
+            layout=layout,
+            run_id=run_id,
+            execution_config=Phase18ExecutionConfig(
+                context_shift_executor=cast(
+                    Any,
+                    getattr(args, "context_shift_executor", "oracle_vm"),
+                ),
+                include_optional_bridge=bool(
+                    getattr(args, "include_optional_bridge", False)
+                ),
+            ),
+            dry_run=dry_run,
+        )
+        cloud_execution_result = exec_result.to_dict()
     elif not dry_run:
         ensure_artifact_layout(layout)
         manifest_path = write_run_manifest(
@@ -317,14 +360,19 @@ def _run_group_scaffold(args: argparse.Namespace) -> int:
         "transport_dispatch": transport_dispatch,
         "pipeline_result": pipeline_result,
         "cloud_handoff_result": cloud_handoff_result,
+        "cloud_execution_result": cloud_execution_result,
         "manifest_path": str(manifest_path) if manifest_path is not None else None,
         "message": (
             "Phase 17 cloud handoff plan generated."
             if command_group == "cloud"
             else (
+                "Phase 18 cloud execution scripts generated."
+                if command_group == "cloud-exec"
+            else (
                 f"Phase 15 pipeline executed for '{command_group}'."
                 if command_group == "pipeline" and not dry_run
                 else f"Phase 2 scaffold executed for '{command_group}'."
+            )
             )
         ),
     }
